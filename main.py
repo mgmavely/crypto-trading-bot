@@ -22,6 +22,7 @@ def getMinuteData(symbol, interval, lookback):
 def strategyTest(symbol, qty, entered=False):
     df = getMinuteData(symbol, '1m', '30')
     cumulret = (df.Open.pct_change() + 1).cumprod() - 1
+    print(cumulret)
     if not entered:
         if cumulret[-1] < -0.002:
             order = client.create_order(symbol=symbol, side="BUY", type="MARKET", quantity=qty)
@@ -30,12 +31,20 @@ def strategyTest(symbol, qty, entered=False):
         else:
             print("No Trade Executed.")
     if entered:
-        """Condition for selling here"""
+        while True:
+            df = getMinuteData(symbol, '1m', '30')
+            sincebuy = df.loc[df.index > pd.to_datetime(order['transactTime'], unit="ms")]
+            if len(sincebuy) > 0:
+                sincebuyret = (sincebuy.Open.pct_change() + 1).cumprod() - 1
+                if sincebuy[-1] > 0.0015 or sincebuyret[-1] < -0.0015:
+                    order = client.create_order(symbol=symbol, side="SELL", type="MARKET", quantity=qty)
+                    print(order)
+                    break
 
 
 if __name__ == '__main__':
     client = Client(api_key=api_key, api_secret=secret_key)
     client_account = client.get_account()
-    btc_history = getMinuteData('BTCUSDT', '1m', '30')
+    strategyTest('BTCUSDT', 0.001)
     # plt.plot(btc_history)
     # plt.show()
